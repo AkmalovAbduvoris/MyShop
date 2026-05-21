@@ -32,11 +32,11 @@ class CategoryController extends Controller
             'is_active' => 'required|boolean'
         ]);
 
-        $categorie = Category::create($validated);
+        $category = Category::create($validated);
 
         return response()->json([
             'message' => 'Categoriya muvaffaqiyatli yaratildi',
-            'data' => $categorie
+            'data' => $category
         ], 201);
     }
 

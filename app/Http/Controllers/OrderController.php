@@ -32,8 +32,8 @@ class OrderController extends Controller
             'total_price' => 'required|numeric',
             'note' => 'nullable|string',
             'products' => 'required|array|min:1',
-            'product.*.id' => 'required|integer|exists;products,id',
-            'product.*.quantity' => 'required|integer|min:1'
+            'products.*.id' => 'required|integer|exists:products,id',
+            'products.*.quantity' => 'required|integer|min:1'
         ]);
 
         DB::beginTransaction();
@@ -48,7 +48,7 @@ class OrderController extends Controller
             $pivotData = [];
             foreach ($validated['products'] as $item) {
 
-                $product = Product::find($item['quantity']);
+                $product = Product::find($item['id']);
                 if ($product->stock < $item['quantity']) {
                     return response()->json([
                         'message' => "{$product->name} mahsulot yetarli emas!"
@@ -57,7 +57,7 @@ class OrderController extends Controller
 
                 $pivotData[$item['id']] =[
                     'quantity' => $item['quantity'],
-                    'price' => $product->price
+                    'unit_price' => $product->price
                 ];
 
                 $product->decrement('stock', $item['quantity']);

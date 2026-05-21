@@ -40,7 +40,7 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            return response('Email yoki parol xato', 401);
+            return response()->json(['message' => 'Email yoki parol xato'], 401);
         }
 
         $token = $user->createToken('web_token')->plainTextToken;
