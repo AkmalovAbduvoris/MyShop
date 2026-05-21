@@ -13,7 +13,8 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::query()
-            ->select(['id', 'name']);
+            ->select(['id', 'name'])
+            ->get();
 
         return response()->json($categories);
     }
@@ -31,11 +32,11 @@ class CategoryController extends Controller
             'is_active' => 'required|boolean'
         ]);
 
-        $categories = Category::create($validated);
+        $categorie = Category::create($validated);
 
         return response()->json([
-            'message' => 'Buyurtma muvaffaqiyatli yaratildi',
-            'data' => $categories
+            'message' => 'Categoriya muvaffaqiyatli yaratildi',
+            'data' => $categorie
         ], 201);
     }
 
@@ -44,8 +45,6 @@ class CategoryController extends Controller
      */
     public function show(Category $category)
     {
-        $category->load(['id', 'name', 'slug', 'image', 'description', 'is_active']);
-
         return response()->json($category);
     }
 
@@ -55,11 +54,11 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'slug' => 'required|string',
-            'image' => 'required|string',
-            'description' => 'required|string',
-            'is_active' => 'required|boolean'
+            'name' => 'sometimes|required|string',
+            'slug' => 'sometimes|required|string',
+            'image' => 'sometimes|required|string',
+            'description' => 'sometimes|required|string',
+            'is_active' => 'sometimes|required|boolean'
         ]);
 
         $category->update($validated);
