@@ -13,8 +13,9 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::query()
-            ->select(['id', 'name'])
-            ->get();
+            ->select(['id', 'name', 'slug', 'image', 'is_active'])
+            ->latest()
+            ->paginate(15);
 
         return response()->json($categories);
     }
@@ -25,10 +26,10 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'slug' => 'required|string',
-            'image' => 'required|string',
-            'description' => 'required|string',
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|unique:categories,slug|max:255',
+            'image' => 'nullable|string',
+            'description' => 'nullable|string',
             'is_active' => 'required|boolean'
         ]);
 
@@ -54,10 +55,10 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
-            'name' => 'sometimes|required|string',
-            'slug' => 'sometimes|required|string',
-            'image' => 'sometimes|required|string',
-            'description' => 'sometimes|required|string',
+            'name' => 'sometimes|required|string|max:255',
+            'slug' => 'sometimes|required|string|max:255|unique:categories,slug,' . $category->id,
+            'image' => 'sometimes|nullable|string',
+            'description' => 'sometimes|nullable|string',
             'is_active' => 'sometimes|required|boolean'
         ]);
 

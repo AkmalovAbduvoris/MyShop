@@ -13,9 +13,10 @@ class ProductController extends Controller
     public function index()
     {
         $product = Product::query()
-            ->select(['id', 'category_id', 'name', 'description', 'price', 'stock'])
+            ->select(['id', 'category_id', 'name', 'slug', 'description', 'price', 'stock', 'is_active'])
             ->with(['category:id,name', 'mainImage:id,product_id,image_path', 'images:id,product_id,image_path,order'])
-            ->get();
+            ->latest()
+            ->paginate(15);
 
         return response()->json($product);
     }
@@ -27,11 +28,11 @@ class ProductController extends Controller
     {
         $validated = $request->validate(([
             'category_id' => 'required|integer|exists:categories,id',
-            'name' => 'required|string',
-            'slug' => 'required|string|unique:products,slug',
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|unique:products,slug|max:255',
             'description' => 'required|string',
-            'price' => 'required|decimal:0,2|min:0',
-            'stock' => 'required|integer',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
             'is_active' => 'nullable|boolean'
         ]));
 
@@ -48,7 +49,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return response()->json($product);
+        return response()->json($product->load(['category', 'images']));
     }
 
     /**
@@ -58,11 +59,11 @@ class ProductController extends Controller
     {
         $validated = $request->validate(([
             'category_id' => 'sometimes|required|integer|exists:categories,id',
-            'name' => 'sometimes|required|string',
-            'slug' => 'sometimes|required|string|unique:products,slug,' . $product->id,
-            'description' => 'sometimes|string',
-            'price' => 'sometimes|required|decimal:0,2|min:0',
-            'stock' => 'sometimes|required|integer',
+            'name' => 'sometimes|required|string|max:255',
+            'slug' => 'sometimes|required|string|max:255|unique:products,slug,' . $product->id,
+            'description' => 'sometimes|required|string',
+            'price' => 'sometimes|required|numeric|min:0',
+            'stock' => 'sometimes|required|integer|min:0',
             'is_active' => 'nullable|boolean'
         ]));
 
