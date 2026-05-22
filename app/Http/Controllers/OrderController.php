@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Product;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,9 +16,8 @@ class OrderController extends Controller
     public function index()
     {
         $orders = Order::query()
-            ->with('products', 'products.mainImage:id,product_id,image_path')
+            ->with(['products', 'products.mainImage:id,product_id,image_path'])
             ->get();
-
         return response()->json($orders);
     }
 
@@ -27,61 +26,52 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
-        $user_id = Auth::id();
         $validated = $request->validate([
-            'total_price' => 'required|numeric',
+            'total_price' => 'required|numeric|min:0',
             'note' => 'nullable|string',
             'products' => 'required|array|min:1',
             'products.*.id' => 'required|integer|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1'
         ]);
 
-        DB::beginTransaction();
-
         try {
-            $order = Order::create([
-                'user_id' => $user_id,
-                'total_price' => $validated['total_price'],
-                'note' => $validated['note'],
-                'status' => 'pending'
-            ]);
-            $pivotData = [];
-            foreach ($validated['products'] as $item) {
+            return DB::transaction(function () use ($validated) {
+                $order = Order::create([
+                    'user_id' => Auth::id(),
+                    'total_price' => $validated['total_price'],
+                    'note' => $validated['note'] ?? null,
+                    'status' => 'pending'
+                ]);
 
-                $product = Product::find($item['id']);
-                if ($product->stock < $item['quantity']) {
-                    return response()->json([
-                        'message' => "{$product->name} mahsulot yetarli emas!"
-                    ], 400);
+                $pivotData = [];
+                foreach ($validated['products'] as $item) {
+                    $product = Product::lockForUpdate()->find($item['id']);
+
+                    if ($product->stock < $item['quantity']) {
+                        throw new \Exception("{$product->name} mahsulotidan yetarli miqdorda mavjud emas!");
+                    }
+
+                    $pivotData[$item['id']] = [
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $product->price
+                    ];
+
+                    $product->decrement('stock', $item['quantity']);
                 }
 
-                $pivotData[$item['id']] =[
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $product->price
-                ];
+                $order->products()->attach($pivotData);
+                $order->load('products');
 
-                $product->decrement('stock', $item['quantity']);
-            }
-
-            $order->products()->attach($pivotData);
-
-            DB::commit();
-
-            $order->load('products');
-
-            return response()->json([
-                'message' => 'Buyurtma muvaffaqiyatli qabul qilindi',
-                'data' => $order
-            ],201);
-
+                return response()->json([
+                    'message' => 'Buyurtma muvaffaqiyatli qabul qilindi',
+                    'data' => $order
+                ], 201);
+            });
         } catch (\Exception $e) {
-
-            DB::rollBack();
-
             return response()->json([
                 'error' => 'Xatolik yuz berdi',
-                'data' => $e->getMessage()
-            ],500);
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 
